@@ -1,0 +1,5 @@
+interface:
+  display_name: "Tracker"
+  short_description: "Create, claim, block and close tickets on the local tracker"
+policy:
+  allow_implicit_invocation: true

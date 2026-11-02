@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# The `tracker` command. install.sh links this file into ~/.local/bin.
+set -euo pipefail
+
+# Follow the link back to the clone, so the command works from any folder.
+src="${BASH_SOURCE[0]}"
+while [ -L "$src" ]; do
+  dir="$(cd -P "$(dirname "$src")" && pwd)"
+  src="$(readlink "$src")"
+  [[ $src != /* ]] && src="$dir/$src"
+done
+here="$(cd -P "$(dirname "$src")/.." && pwd)"
+
+exec node --no-warnings "$here/src/cli.mjs" "$@"

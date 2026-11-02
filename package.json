@@ -1,0 +1,14 @@
+{
+  "name": "tracker",
+  "version": "1.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "repository": "github:Ghatage/tracker",
+  "description": "Local ticket tracker for coding agents: SQLite, CLI, JSON API, one-page web app.",
+  "type": "module",
+  "bin": { "tracker": "bin/tracker" },
+  "engines": { "node": ">=22.15.0" },
+  "scripts": {
+    "test": "node --no-warnings --test src/test.mjs"
+  }
+}

@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Tracker</title>
+<style>
+/* Quiet and typographic: neutral surfaces, one accent, hairlines, hierarchy from weight and space. */
+:root {
+  --bg: #f7f7f5; --surface: #ffffff; --sunk: #f0f0ed;
+  --text: #1c1c1a; --muted: #62615c;
+  --line: #e4e3df; --line-strong: #c9c8c2; --edge: #a9a8a1;
+  --hover: rgba(0, 0, 0, .035);
+  --accent: #1d6b58; --on-accent: #ffffff; --accent-soft: rgba(29, 107, 88, .08);
+  --danger: #a3372b; --on-danger: #ffffff;
+  --caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2362615c' stroke-width='1.3'/%3E%3C/svg%3E");
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --r: 4px;
+  --head: 52px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141413; --surface: #1b1b1a; --sunk: #222220;
+    --text: #e9e8e4; --muted: #a3a29c;
+    --line: #2d2d2a; --line-strong: #454541; --edge: #6d6c67;
+    --hover: rgba(255, 255, 255, .045);
+    --accent: #7cc4ad; --on-accent: #0d1f19; --accent-soft: rgba(124, 196, 173, .1);
+    --danger: #e0877b; --on-danger: #1f0f0c;
+    --caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a3a29c' stroke-width='1.3'/%3E%3C/svg%3E");
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body { font: 14px/1.5 var(--font); color: var(--text); background: var(--bg); display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { margin: 0; font-weight: 600; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Controls */
+button { height: 30px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); cursor: pointer; white-space: nowrap; }
+button:hover { background: var(--sunk); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 500; }
+button.primary:hover { filter: brightness(1.08); }
+button.quiet { border-color: transparent; background: none; color: var(--muted); padding: 0 8px; }
+button.quiet:hover { color: var(--text); background: var(--hover); }
+button.danger { background: var(--danger); border-color: var(--danger); color: var(--on-danger); font-weight: 500; }
+button.link { height: auto; border: 0; background: none; padding: 0; color: var(--text); text-align: left; white-space: normal; }
+button.link:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; background: none; }
+input, select, textarea { border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); }
+input, select { height: 30px; padding: 0 8px; }
+select { appearance: none; padding-right: 26px; background: var(--surface) var(--caret) no-repeat right 9px center; text-overflow: ellipsis; }
+select.set { border-color: var(--text); }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); outline: 2px solid var(--accent-soft); outline-offset: 0; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+textarea { width: 100%; display: block; padding: 8px 10px; resize: vertical; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; }
+label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.field { margin-bottom: 16px; }
+.field input, .field select { width: 100%; }
+.mono { font-family: var(--mono); font-size: 12px; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+.error { color: var(--danger); font-size: 13px; }
+.error:empty { display: none; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.between { justify-content: space-between; }
+.grow { flex: 1; min-width: 0; }
+
+/* Header */
+header.top { min-height: var(--head); padding: 10px 20px; display: flex; gap: 8px 28px; align-items: center; flex-wrap: wrap; background: var(--surface); border-bottom: 1px solid var(--line); }
+.brand { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+.tabs { display: flex; gap: 20px; }
+.tabs button { height: 30px; padding: 0; border: 0; border-radius: 0; background: none; color: var(--muted); box-shadow: inset 0 -2px 0 transparent; }
+.tabs button:hover { color: var(--text); background: none; }
+.tabs button[aria-current="page"] { color: var(--text); font-weight: 600; box-shadow: inset 0 -2px 0 var(--text); }
+.filters { display: flex; gap: 8px; align-items: center; margin-left: auto; flex-wrap: wrap; }
+.filters select { max-width: 210px; }
+.filters input[type=search] { width: 220px; }
+
+/* Shell: main and drawer sit side by side under the header */
+.shell { flex: 1; min-height: 0; display: flex; }
+main { flex: 1; min-width: 0; padding: 20px; overflow: auto; display: flex; flex-direction: column; }
+.empty { color: var(--muted); padding: 12px 2px; font-size: 13px; }
+
+/* Kanban */
+.board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.column { min-height: calc(100vh - var(--head) - 60px); border-radius: var(--r); outline: 1px dashed transparent; outline-offset: 4px; }
+.column.over { outline-color: var(--accent); background: var(--accent-soft); }
+.column h2 { display: flex; align-items: baseline; gap: 8px; font-size: 13px; padding: 0 2px 10px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
+.column h2 .count { font-weight: 400; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px 11px; margin-bottom: 8px; cursor: pointer; }
+.card:hover { border-color: var(--line-strong); }
+.card.dragging { opacity: .4; }
+.card .top { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.card .top .mono { font-size: 11.5px; }
+.card .title { margin: 3px 0 0; font-weight: 500; line-height: 1.4; }
+.card .meta { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.card .meta:empty { display: none; }
+.column[data-status="done"] .card .title { color: var(--muted); font-weight: 400; }
+.blocked { color: var(--text); font-weight: 600; white-space: nowrap; }
+.sep { padding: 0 5px; color: var(--line-strong); }
+
+/* Graph */
+.graph { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+.graph-tools { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted); margin-left: auto; font-size: 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { display: inline-block; width: 16px; height: 10px; border: 1px solid var(--line-strong); border-radius: 2px; background: var(--surface); }
+.swatch.prog { border: 2px solid var(--accent); }
+.done-sample { text-decoration: line-through; }
+.graph svg { flex: 1; width: 100%; min-height: 400px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); cursor: grab; display: block; }
+.graph svg.panning { cursor: grabbing; }
+.node { cursor: pointer; }
+.node:focus { outline: none; }
+.node rect.box { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1; }
+.node:hover rect.box { stroke: var(--muted); }
+.node.status-in_progress rect.box { stroke: var(--accent); stroke-width: 2; }
+.node rect.ring { fill: none; stroke: none; }
+.node:focus-visible rect.ring { stroke: var(--accent); stroke-width: 2; }
+.node.status-done { opacity: .4; }
+.node.status-done text.title { text-decoration: line-through; }
+.node text { font-family: var(--font); font-size: 12px; fill: var(--text); pointer-events: none; }
+.node text.title { font-weight: 500; }
+.node text.key { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
+.node text.small { font-size: 11px; fill: var(--muted); }
+.node text.flag { font-size: 11px; font-weight: 600; fill: var(--text); }
+.edge { fill: none; stroke: var(--edge); stroke-width: 1; }
+.edge.from-done { opacity: .35; }
+#arrow path { fill: var(--edge); }
+
+/* Epics */
+.epics { max-width: 1040px; }
+.page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.page-head h1 { font-size: 18px; letter-spacing: -.01em; }
+.epics table { width: 100%; border-collapse: collapse; }
+.epics th, .epics td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.epics th { white-space: nowrap; font-size: 12px; font-weight: 500; color: var(--muted); border-bottom-color: var(--line-strong); }
+.epics th.n, .epics td.n { text-align: right; width: 96px; font-variant-numeric: tabular-nums; }
+.epics td.id { width: 56px; color: var(--muted); }
+.epics td.name { font-weight: 500; }
+.epics td.act { width: 1%; white-space: nowrap; text-align: right; }
+.epics tbody tr:hover { background: var(--hover); }
+.bar { display: block; height: 2px; margin-top: 7px; max-width: 240px; background: var(--line); }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; margin-bottom: 24px; }
+.panel h2 { font-size: 15px; margin-bottom: 16px; }
+
+/* Confirm */
+.confirm { border: 1px solid var(--line-strong); border-radius: var(--r); padding: 12px 14px; background: var(--sunk); }
+
+/* Drawer */
+.drawer { width: 460px; flex: none; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line); padding: 14px 24px 40px; }
+.d-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 30px; }
+.d-title { font-size: 20px; line-height: 1.3; letter-spacing: -.01em; margin: 10px 0 18px; }
+.facts { display: grid; grid-template-columns: 96px 1fr; gap: 6px 12px; margin: 0; font-size: 13px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.d-sec { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 14px; }
+.d-sec h3 { font-size: 13px; margin-bottom: 8px; }
+.prose { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font: inherit; line-height: 1.6; }
+.dep { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.dep:last-child { border-bottom: 0; }
+.dep .mono { margin-right: 8px; }
+.dep.done .t { color: var(--muted); text-decoration: line-through; }
+.dep button.quiet { height: 24px; flex: none; }
+.stamps { margin-top: 22px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.theme-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.theme-pick button { height: 24px; padding: 0 8px; font-size: 12px; color: var(--muted); border-color: var(--line); }
+.theme-pick button[aria-pressed="true"] { color: var(--text); border-color: var(--text); font-weight: 600; }
+.theme-pick button[aria-pressed="true"]::before { content: "\2713\00a0"; }
+
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: var(--r); font-size: 13px; max-width: 80%; }
+
+@media (max-width: 1080px) {
+  .drawer { position: fixed; inset: 0 0 0 auto; width: min(460px, 100%); z-index: 10; }
+  .filters input[type=search] { width: 180px; }
+  .filters select { max-width: 170px; }
+}
+@media (max-width: 720px) {
+  .board { grid-template-columns: 1fr; }
+  .column { min-height: 0; }
+  .filters { margin-left: 0; width: 100%; }
+  .filters input[type=search] { flex: 1; width: auto; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand">Tracker</span>
+  <nav class="tabs" aria-label="Views">
+    <button data-view="kanban">Kanban</button>
+    <button data-view="graph">Graph</button>
+    <button data-view="epics">Epics</button>
+  </nav>
+  <div class="filters">
+    <select id="f-epic" aria-label="Epic"></select>
+    <select id="f-theme" aria-label="Theme"></select>
+    <select id="f-type" aria-label="Type"></select>
+    <input id="f-q" type="search" placeholder="Search" aria-label="Search key, title, description">
+    <button id="new-ticket" class="primary">New ticket</button>
+  </div>
+</header>
+<div class="shell">
+  <main id="main"></main>
+  <aside id="drawer" class="drawer" aria-label="Ticket" hidden></aside>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+const STATUSES = [['todo', 'Todo'], ['in_progress', 'In progress'], ['done', 'Done']];
+const TYPES = ['story', 'bug', 'research'];
+const state = {
+  view: 'kanban', epic: '', theme: '', type: '', q: '', ticket: '', // in the URL hash
+  all: [], epics: [], themes: [],                            // loaded data
+  mode: 'view', confirm: false, err: '', depErr: '',         // drawer
+  epicEdit: null, epicConfirm: null,                         // epics view
+  layout: null, gt: null, fitPending: true,                  // graph
+};
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const keyNum = (k) => parseInt(k.split('-').pop(), 10);
+const byKey = (k) => state.all.find((t) => t.key === k);
+const epicName = (id) => state.epics.find((e) => e.id === id)?.name || '';
+const statusLabel = (s) => (STATUSES.find(([v]) => v === s) || [s, s])[1];
+const openBlockers = (t) => t.blocked_by.filter((k) => byKey(k)?.status !== 'done');
+const fmt = (ts) => (ts ? ts.replace('T', ' ').slice(0, 16) : '');
+const truncate = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
+const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
+const SEP = '<span class="sep" aria-hidden="true">/</span>';
+
+function filtered() {
+  const q = state.q.trim().toLowerCase();
+  return state.all.filter((t) => (!state.epic || t.epic === state.epic) && (!state.theme || t.themes.includes(state.theme))
+    && (!state.type || t.type === state.type)
+    && (!q || t.key.toLowerCase().includes(q) || t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)));
+}
+
+// ---- url hash --------------------------------------------------------------
+function readHash() {
+  const [view, qs] = location.hash.replace(/^#/, '').split('?');
+  const p = new URLSearchParams(qs || '');
+  state.view = ['kanban', 'graph', 'epics'].includes(view) ? view : 'kanban';
+  for (const k of ['epic', 'theme', 'type', 'q', 'ticket']) state[k] = p.get(k) || '';
+}
+function writeHash() {
+  const p = new URLSearchParams();
+  for (const k of ['epic', 'theme', 'type', 'q', 'ticket']) if (state[k]) p.set(k, state[k]);
+  const qs = p.toString();
+  const h = '#' + state.view + (qs ? '?' + qs : '');
+  if (location.hash !== h) history.replaceState(null, '', h);
+}
+
+// ---- api -------------------------------------------------------------------
+async function api(method, path, body) {
+  const res = await fetch(path, { method, headers: body !== undefined ? { 'content-type': 'application/json' } : {}, body: body !== undefined ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({ error: res.statusText }));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+async function load() {
+  [state.all, state.epics, state.themes] = await Promise.all([api('GET', '/api/tickets'), api('GET', '/api/epics'), api('GET', '/api/themes')]);
+  render();
+}
+// Run a mutation, reload, toast on failure.
+async function run(fn) {
+  try { await fn(); await load(); } catch (e) { toast(e.message); }
+}
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
+}
+
+// ---- render ----------------------------------------------------------------
+function render() {
+  writeHash();
+  document.querySelectorAll('.tabs button').forEach((b) => (b.dataset.view === state.view ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
+  fillSelect($('#f-epic'), state.epics.map((e) => [e.id, `${e.id}  ${e.name}`]), state.epic, 'All epics');
+  fillSelect($('#f-theme'), state.themes.map((t) => [t, t]), state.theme, 'All themes');
+  fillSelect($('#f-type'), TYPES.map((t) => [t, t]), state.type, 'All types');
+  if ($('#f-q').value !== state.q) $('#f-q').value = state.q;
+  $('#main').innerHTML = state.view === 'kanban' ? renderKanban() : state.view === 'graph' ? renderGraph() : renderEpics();
+  if (state.view === 'graph') mountGraph();
+  renderDrawer();
+}
+function fillSelect(sel, options, value, blank) {
+  if (value && !options.some(([v]) => v === value)) options.push([value, value]);
+  sel.innerHTML = `<option value="">${esc(blank)}</option>` + options.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+  sel.value = value;
+  sel.classList.toggle('set', Boolean(value));
+}
+const blockedText = (n, short) => (n ? `<span class="blocked">${short ? `blocked by ${n}` : `Blocked by ${plural(n, 'open ticket')}`}</span>` : '');
+// One quiet line under a card title: blocked, epic, themes.
+function metaLine(t) {
+  const parts = [];
+  const n = openBlockers(t).length;
+  if (n) parts.push(blockedText(n, true));
+  if (t.epic) parts.push(`<span title="${esc(epicName(t.epic))}">${esc(t.epic)}</span>`);
+  if (t.themes.length) parts.push(esc(t.themes.join(', ')));
+  return parts.join(SEP);
+}
+
+// Kanban
+function renderKanban() {
+  const ts = filtered();
+  return '<div class="board">' + STATUSES.map(([s, label]) => {
+    const cards = ts.filter((t) => t.status === s);
+    return `<section class="column" data-status="${s}"><h2>${label}<span class="count num">${cards.length}</span></h2>`
+      + (cards.map((t) => `<article class="card" draggable="true" tabindex="0" data-key="${esc(t.key)}" aria-label="${esc(t.key)} ${esc(t.title)}">`
+        + `<div class="top"><span class="mono">${esc(t.key)}</span><span>${esc(t.type)}</span></div>`
+        + `<div class="title">${esc(t.title)}</div><div class="meta">${metaLine(t)}</div></article>`).join('') || '<div class="empty">Nothing here</div>')
+      + '</section>';
+  }).join('') + '</div>';
+}
+
+// Graph: layered left-to-right by dependency depth.
+const NODE_W = 216, NODE_H = 54, GAP_X = 72, GAP_Y = 14;
+function layout(ts) {
+  const m = new Map(ts.map((t) => [t.key, t]));
+  const depth = new Map();
+  const d = (t) => {
+    if (depth.has(t.key)) return depth.get(t.key);
+    depth.set(t.key, 0);
+    let v = 0;
+    for (const b of t.blocked_by) if (m.has(b)) v = Math.max(v, d(m.get(b)) + 1);
+    depth.set(t.key, v);
+    return v;
+  };
+  ts.forEach(d);
+  const cols = [];
+  for (const t of ts) (cols[depth.get(t.key)] ||= []).push(t);
+  for (const c of cols) c.sort((a, b) => keyNum(a.key) - keyNum(b.key) || a.key.localeCompare(b.key));
+  const rows = Math.max(...cols.map((c) => c.length));
+  const pos = new Map();
+  cols.forEach((c, i) => {
+    const off = ((rows - c.length) * (NODE_H + GAP_Y)) / 2;
+    c.forEach((t, j) => pos.set(t.key, { x: i * (NODE_W + GAP_X), y: off + j * (NODE_H + GAP_Y) }));
+  });
+  const edges = [];
+  for (const t of ts) for (const b of t.blocked_by) if (m.has(b)) edges.push([b, t.key]);
+  return { pos, edges, width: cols.length * (NODE_W + GAP_X) - GAP_X, height: rows * (NODE_H + GAP_Y) - GAP_Y };
+}
+function renderGraph() {
+  const ts = filtered();
+  if (!ts.length) { state.layout = null; return '<div class="graph"><div class="empty">No tickets match these filters.</div></div>'; }
+  const L = (state.layout = layout(ts));
+  const edges = L.edges.map(([a, b]) => {
+    const p = L.pos.get(a), q = L.pos.get(b);
+    const x1 = p.x + NODE_W, y1 = p.y + NODE_H / 2, x2 = q.x - 2, y2 = q.y + NODE_H / 2, c = Math.max(24, (x2 - x1) / 2);
+    return `<path class="edge${byKey(a)?.status === 'done' ? ' from-done' : ''}" d="M${x1},${y1} C${x1 + c},${y1} ${x2 - c},${y2} ${x2},${y2}" marker-end="url(#arrow)"/>`;
+  }).join('');
+  const nodes = ts.map((t) => {
+    const p = L.pos.get(t.key), n = t.status === 'done' ? 0 : openBlockers(t).length;
+    const state_ = `${statusLabel(t.status)}${n ? `, blocked by ${n}` : ''}`;
+    return `<g class="node status-${t.status}" data-key="${esc(t.key)}" tabindex="0" role="button" aria-label="${esc(t.key)} ${esc(t.title)}. ${state_}" transform="translate(${p.x},${p.y})"><title>${esc(t.key)} ${esc(t.title)} (${state_})</title>`
+      + `<rect class="ring" x="-4" y="-4" width="${NODE_W + 8}" height="${NODE_H + 8}" rx="6"/>`
+      + `<rect class="box" width="${NODE_W}" height="${NODE_H}" rx="3"/>`
+      + `<text class="key" x="12" y="20">${esc(t.key)}<tspan class="small" dx="8">${esc(t.type)}</tspan></text>`
+      + (n ? `<text class="flag" x="${NODE_W - 12}" y="20" text-anchor="end">blocked by ${n}</text>`
+        : t.status === 'in_progress' ? `<text class="small" x="${NODE_W - 12}" y="20" text-anchor="end">in progress</text>` : '')
+      + `<text class="title" x="12" y="40">${esc(truncate(t.title, 30))}</text></g>`;
+  }).join('');
+  return `<div class="graph"><div class="graph-tools"><button data-action="fit">Fit</button><span class="muted num">${plural(ts.length, 'ticket')}, ${plural(L.edges.length, 'dependency', 'dependencies')}</span>`
+    + '<span class="legend"><span><i class="swatch prog"></i>In progress</span><span><span class="done-sample">Done</span>faded</span><span><b class="blocked">blocked by n</b>open blockers</span><span>Scroll to zoom, drag to pan</span></span></div>'
+    + '<svg id="svg" role="img" aria-label="Dependency graph"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z"/></marker></defs>'
+    + `<g id="vp">${edges}${nodes}</g></svg></div>`;
+}
+let drag = null, moved = 0;
+function applyTransform() {
+  const g = state.gt;
+  $('#vp')?.setAttribute('transform', `translate(${g.x},${g.y}) scale(${g.k})`);
+}
+function fit() {
+  const svg = $('#svg'), L = state.layout;
+  if (!svg || !L) return;
+  const r = svg.getBoundingClientRect(), pad = 32;
+  // Keep labels at their designed size; drag to pan when the graph overflows.
+  const k = Math.max(1, Math.min(1.25, (r.width - pad * 2) / L.width, (r.height - pad * 2) / L.height));
+  state.gt = { k, x: Math.max(pad, (r.width - L.width * k) / 2), y: Math.max(pad, (r.height - L.height * k) / 2) };
+  state.fitPending = false;
+  applyTransform();
+}
+function mountGraph() {
+  const svg = $('#svg');
+  if (!svg) return;
+  if (state.fitPending || !state.gt) fit(); else applyTransform();
+  svg.addEventListener('mousedown', (e) => { drag = { x: e.clientX, y: e.clientY, tx: state.gt.x, ty: state.gt.y }; moved = 0; svg.classList.add('panning'); e.preventDefault(); });
+  svg.addEventListener('click', (e) => { const n = e.target.closest('.node'); if (n && moved < 4) openTicket(n.dataset.key); });
+  svg.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const r = svg.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, g = state.gt;
+    const k = Math.min(3, Math.max(0.2, g.k * Math.exp(-e.deltaY * 0.0015)));
+    state.gt = { k, x: mx - (mx - g.x) * (k / g.k), y: my - (my - g.y) * (k / g.k) };
+    applyTransform();
+  }, { passive: false });
+}
+window.addEventListener('mousemove', (e) => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  moved = Math.max(moved, Math.abs(dx) + Math.abs(dy));
+  state.gt.x = drag.tx + dx; state.gt.y = drag.ty + dy;
+  applyTransform();
+});
+window.addEventListener('mouseup', () => { drag = null; $('#svg')?.classList.remove('panning'); });
+
+// Epics
+function renderEpics() {
+  const rows = state.epics.map((e) => {
+    const n = e.counts.todo + e.counts.in_progress + e.counts.done;
+    const pct = n ? Math.round((e.counts.done / n) * 100) : 0;
+    return `<tr><td class="id mono">${esc(e.id)}</td><td class="name"><button class="link" data-action="filter-epic" data-id="${esc(e.id)}">${esc(e.name)}</button>`
+      + `<span class="bar" role="img" aria-label="${pct}% done"><i style="width:${pct}%"></i></span></td>`
+      + `<td class="n">${e.counts.todo}</td><td class="n">${e.counts.in_progress}</td><td class="n">${e.counts.done}</td>`
+      + `<td class="act"><button class="quiet" data-action="edit-epic" data-id="${esc(e.id)}">Edit</button><button class="quiet" data-action="confirm-epic" data-id="${esc(e.id)}">Delete</button></td></tr>`
+      + (state.epicConfirm === e.id ? `<tr><td colspan="6"><div class="confirm row between"><span>Delete ${esc(e.id)} “${esc(e.name)}”? ${n ? `Its ${plural(n, 'ticket')} stay, without an epic.` : ''}</span>`
+        + `<span class="row"><button data-action="cancel-epic-confirm">Cancel</button><button class="danger" data-action="delete-epic" data-id="${esc(e.id)}">Delete epic</button></span></div></td></tr>` : '');
+  }).join('');
+  return `<div class="epics"><div class="page-head"><h1>Epics</h1><button data-action="edit-epic" data-id="new">New epic</button></div>${state.epicEdit ? epicForm() : ''}`
+    + '<table><thead><tr><th>Id</th><th>Name</th><th class="n">Todo</th><th class="n">In progress</th><th class="n">Done</th><th><span hidden>Actions</span></th></tr></thead>'
+    + `<tbody>${rows || '<tr><td colspan="6" class="empty">No epics yet</td></tr>'}</tbody></table></div>`;
+}
+function epicForm() {
+  const e = state.epicEdit === 'new' ? { id: '', name: '', description: '' } : state.epics.find((x) => x.id === state.epicEdit) || { id: '', name: '', description: '' };
+  return `<form class="panel" id="epic-form" data-id="${esc(e.id)}"><h2>${e.id ? 'Edit ' + esc(e.id) : 'New epic'}</h2>`
+    + `<div class="field"><label for="ep-name">Name</label><input id="ep-name" name="name" required value="${esc(e.name)}"></div>`
+    + `<div class="field"><label for="ep-desc">Description, markdown</label><textarea id="ep-desc" name="description" rows="14">${esc(e.description)}</textarea></div>`
+    + `<div class="row"><button class="primary" type="submit">Save</button><button type="button" data-action="cancel-epic">Cancel</button><span class="error">${esc(state.err)}</span></div></form>`;
+}
+
+// Drawer
+function renderDrawer() {
+  const d = $('#drawer');
+  if (!state.ticket) { d.hidden = true; d.innerHTML = ''; return; }
+  const isNew = state.ticket === 'new';
+  const t = isNew
+    ? { key: '', title: '', description: '', status: 'todo', type: state.type || 'story', epic: state.epic || null, themes: state.theme ? [state.theme] : [], labels: [], resolution: null, blocked_by: [], blocks: [] }
+    : byKey(state.ticket);
+  d.hidden = false;
+  if (!t) { d.innerHTML = `<div class="d-head"><span class="muted">${esc(state.ticket)} not found</span><button class="quiet" data-action="close-drawer">Close</button></div>`; return; }
+  d.innerHTML = isNew || state.mode === 'edit' ? ticketForm(t, isNew) : ticketView(t);
+  if (isNew || state.mode === 'edit') $('input[name=title]', d).focus();
+}
+function ticketView(t) {
+  const deps = t.blocked_by.map((k) => {
+    const b = byKey(k), done = b?.status === 'done';
+    return `<div class="dep${done ? ' done' : ''}"><span><button class="link mono" data-action="open" data-key="${esc(k)}">${esc(k)}</button><span class="t">${esc(b?.title || '')}</span>${done ? '<span class="muted"> (done)</span>' : ''}</span>`
+      + `<button class="quiet" data-action="unblock" data-key="${esc(t.key)}" data-by="${esc(k)}" aria-label="Remove blocker ${esc(k)}">Remove</button></div>`;
+  }).join('');
+  const blocks = t.blocks.map((k) => {
+    const b = byKey(k);
+    return `<div class="dep${b?.status === 'done' ? ' done' : ''}"><span><button class="link mono" data-action="open" data-key="${esc(k)}">${esc(k)}</button><span class="t">${esc(b?.title || '')}</span></span></div>`;
+  }).join('');
+  const open = openBlockers(t).length;
+  const none = '<span class="muted">None</span>';
+  return `<div class="d-head"><span class="mono muted">${esc(t.key)}</span><span class="row"><button data-action="edit">Edit</button><button class="quiet" data-action="close-drawer">Close</button></span></div>`
+    + `<h2 class="d-title">${esc(t.title)}</h2>`
+    + `<dl class="facts"><dt>Status</dt><dd>${statusLabel(t.status)}${open && t.status !== 'done' ? SEP + blockedText(open) : ''}</dd>`
+    + `<dt>Type</dt><dd>${esc(t.type)}</dd>`
+    + `<dt>Epic</dt><dd>${t.epic ? `<span class="mono">${esc(t.epic)}</span> ${esc(epicName(t.epic))}` : none}</dd>`
+    + `<dt>Themes</dt><dd>${esc(t.themes.join(', ')) || none}</dd>`
+    + `<dt>Labels</dt><dd>${t.labels.length ? `<span class="mono">${esc(t.labels.join(', '))}</span>` : none}</dd></dl>`
+    + `<section class="d-sec"><h3>Description</h3><div class="prose">${esc(t.description) || none}</div></section>`
+    + `<section class="d-sec"><h3>Resolution</h3><div class="prose">${esc(t.resolution) || none}</div></section>`
+    + `<section class="d-sec"><h3>Blocked by</h3>${deps || '<div class="muted">Nothing</div>'}`
+    + `<form id="dep-form" class="row" style="margin-top:10px" data-key="${esc(t.key)}"><input name="key" placeholder="KEY-3" style="width:120px" autocomplete="off" aria-label="Blocker key"><button type="submit">Add blocker</button><span class="error">${esc(state.depErr)}</span></form></section>`
+    + `<section class="d-sec"><h3>Blocks</h3>${blocks || '<div class="muted">Nothing</div>'}</section>`
+    + `<section class="d-sec">${state.confirm
+      ? `<div class="confirm"><div>Delete ${esc(t.key)}? Its dependency links go with it.</div><div class="row" style="margin-top:10px"><button class="danger" data-action="delete">Delete ticket</button><button data-action="cancel-confirm">Cancel</button></div></div>`
+      : '<button class="quiet" style="margin-left:-8px" data-action="confirm">Delete ticket…</button>'}`
+    + `<div class="error" style="margin-top:8px">${esc(state.err)}</div></section>`
+    + `<div class="stamps">Created ${fmt(t.created_at)}${SEP}Updated ${fmt(t.updated_at)}${t.closed_at ? SEP + 'Closed ' + fmt(t.closed_at) : ''}</div>`;
+}
+function ticketForm(t, isNew) {
+  const epicOpts = '<option value="">No epic</option>' + state.epics.map((e) => `<option value="${esc(e.id)}"${e.id === t.epic ? ' selected' : ''}>${esc(e.id)}  ${esc(e.name)}</option>`).join('');
+  const statusOpts = STATUSES.map(([v, l]) => `<option value="${v}"${v === t.status ? ' selected' : ''}>${l}</option>`).join('');
+  const typeOpts = TYPES.map((v) => `<option value="${v}"${v === t.type ? ' selected' : ''}>${v}</option>`).join('');
+  const known = [...new Set([...state.themes, ...t.themes])].sort();
+  const pick = known.map((x) => `<button type="button" aria-pressed="${t.themes.includes(x)}" data-action="toggle-theme" data-theme="${esc(x)}">${esc(x)}</button>`).join('');
+  return `<form id="ticket-form" data-key="${esc(t.key)}"><div class="d-head"><span class="mono muted">${isNew ? 'New ticket' : esc(t.key)}</span>`
+    + `<span class="row"><button type="button" class="quiet" data-action="${isNew ? 'close-drawer' : 'cancel-edit'}">Cancel</button><button class="primary" type="submit">${isNew ? 'Create' : 'Save'}</button></span></div>`
+    + `<div class="field" style="margin-top:18px"><label for="tf-title">Title</label><input id="tf-title" name="title" required value="${esc(t.title)}"></div>`
+    + `<div class="field"><label for="tf-desc">Description</label><textarea id="tf-desc" name="description" rows="9">${esc(t.description)}</textarea></div>`
+    + `<div class="row" style="align-items:start;gap:12px"><div class="field grow"><label for="tf-status">Status</label><select id="tf-status" name="status">${statusOpts}</select></div><div class="field grow"><label for="tf-type">Type</label><select id="tf-type" name="type">${typeOpts}</select></div></div>`
+    + `<div class="field"><label for="tf-epic">Epic</label><select id="tf-epic" name="epic">${epicOpts}</select></div>`
+    + `<div class="field"><label for="tf-themes">Themes, comma separated</label><input id="tf-themes" name="themes" value="${esc(t.themes.join(', '))}" placeholder="mvp, speakers" autocomplete="off">`
+    + `<div class="theme-pick" role="group" aria-label="Known themes">${pick}</div></div>`
+    + `<div class="field"><label for="tf-labels">Labels, comma separated</label><input id="tf-labels" name="labels" value="${esc(t.labels.join(', '))}" placeholder="wayfinder:research"></div>`
+    + `<div class="field"><label for="tf-res">Resolution</label><textarea id="tf-res" name="resolution" rows="5">${esc(t.resolution || '')}</textarea></div>`
+    + `<div class="error">${esc(state.err)}</div></form>`;
+}
+function openTicket(key) {
+  Object.assign(state, { ticket: key, mode: 'view', confirm: false, err: '', depErr: '' });
+  writeHash();
+  renderDrawer();
+}
+function closeDrawer() {
+  const was = state.ticket;
+  Object.assign(state, { ticket: '', mode: 'view', confirm: false, err: '', depErr: '' });
+  writeHash();
+  renderDrawer();
+  // Return focus to the card or node that opened the drawer.
+  document.querySelector(`[data-key="${CSS.escape(was)}"]:is(.card, .node)`)?.focus({ preventScroll: true });
+}
+// Message for a blocker key typed into the drawer, before asking the server.
+function depProblem(key, ticketKey) {
+  if (!/^[A-Za-z]+-\d+$/.test(key)) return 'Enter a ticket key like KEY-3';
+  const k = key.toUpperCase(), t = byKey(ticketKey);
+  if (k === ticketKey) return 'A ticket cannot block itself';
+  if (!byKey(k)) return `${k} does not exist`;
+  if (t.blocked_by.includes(k)) return `${k} is already a blocker`;
+  return '';
+}
+
+const splitList = (s) => [...new Set(s.split(',').map((x) => x.trim()).filter(Boolean))];
+// Press the theme buttons that are in the themes input.
+function syncThemePick() {
+  const input = $('#ticket-form input[name=themes]');
+  if (!input) return;
+  const on = splitList(input.value.toLowerCase());
+  document.querySelectorAll('.theme-pick button').forEach((c) => c.setAttribute('aria-pressed', String(on.includes(c.dataset.theme))));
+}
+
+// ---- events ----------------------------------------------------------------
+const actions = {
+  'close-drawer': closeDrawer,
+  open: (d) => openTicket(d.key),
+  edit: () => { state.mode = 'edit'; state.err = ''; renderDrawer(); },
+  'cancel-edit': () => { state.mode = 'view'; state.err = ''; renderDrawer(); },
+  confirm: () => { state.confirm = true; renderDrawer(); $('#drawer [data-action=cancel-confirm]')?.focus(); },
+  'cancel-confirm': () => { state.confirm = false; renderDrawer(); },
+  delete: () => run(async () => { await api('DELETE', `/api/tickets/${state.ticket}`); closeDrawer(); }),
+  unblock: (d) => run(() => api('DELETE', `/api/tickets/${d.key}/blocked-by/${d.by}`)),
+  fit,
+  'toggle-theme': (d) => {
+    const input = $('#ticket-form input[name=themes]'), list = splitList(input.value.toLowerCase());
+    input.value = (list.includes(d.theme) ? list.filter((x) => x !== d.theme) : [...list, d.theme]).join(', ');
+    syncThemePick();
+  },
+  'filter-epic': (d) => { Object.assign(state, { epic: d.id, view: 'kanban', fitPending: true }); render(); },
+  'edit-epic': (d) => { state.epicEdit = d.id; state.err = ''; render(); $('#ep-name')?.focus(); },
+  'cancel-epic': () => { state.epicEdit = null; state.err = ''; render(); },
+  'confirm-epic': (d) => { state.epicConfirm = d.id; render(); },
+  'cancel-epic-confirm': () => { state.epicConfirm = null; render(); },
+  'delete-epic': (d) => run(async () => { await api('DELETE', `/api/epics/${d.id}?force=true`); state.epicConfirm = null; if (state.epic === d.id) state.epic = ''; }),
+};
+document.body.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (el) { e.preventDefault(); actions[el.dataset.action](el.dataset); return; }
+  const card = e.target.closest('.card');
+  if (card) openTicket(card.dataset.key);
+});
+document.body.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target, f = new FormData(form);
+  try {
+    if (form.id === 'ticket-form') {
+      const body = { title: f.get('title'), description: f.get('description'), status: f.get('status'), type: f.get('type'), epic: f.get('epic') || null,
+        themes: splitList(f.get('themes')), labels: splitList(f.get('labels')), resolution: f.get('resolution') || null };
+      const t = form.dataset.key ? await api('PATCH', `/api/tickets/${form.dataset.key}`, body) : await api('POST', '/api/tickets', body);
+      Object.assign(state, { ticket: t.key, mode: 'view', err: '' });
+    } else if (form.id === 'epic-form') {
+      const body = { name: f.get('name'), description: f.get('description') };
+      if (form.dataset.id) await api('PATCH', `/api/epics/${form.dataset.id}`, body); else await api('POST', '/api/epics', body);
+      state.epicEdit = null; state.err = '';
+    } else if (form.id === 'dep-form') {
+      const key = f.get('key').trim();
+      state.depErr = depProblem(key, form.dataset.key);
+      if (state.depErr) return renderDrawer();
+      await api('POST', `/api/tickets/${form.dataset.key}/blocked-by`, { key });
+    }
+    await load();
+  } catch (err) {
+    if (form.id === 'dep-form') state.depErr = err.message; else state.err = err.message;
+    if (form.id === 'epic-form') render(); else renderDrawer();
+  }
+});
+document.body.addEventListener('input', (e) => {
+  if (e.target.name === 'themes') syncThemePick();
+  if (e.target.name === 'key' && e.target.form?.id === 'dep-form') {
+    const v = e.target.value.trim();
+    $('.error', e.target.form).textContent = v ? depProblem(v, e.target.form.dataset.key) : '';
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.ticket) return closeDrawer();
+  // Cards and graph nodes open with Enter or Space.
+  const item = (e.key === 'Enter' || e.key === ' ') && e.target.closest?.('.card, .node');
+  if (item && e.target === item) { e.preventDefault(); openTicket(item.dataset.key); $('#drawer button')?.focus(); }
+});
+
+// Kanban drag and drop
+const main = $('#main');
+main.addEventListener('dragstart', (e) => { const c = e.target.closest('.card'); if (!c) return; e.dataTransfer.setData('text/plain', c.dataset.key); e.dataTransfer.effectAllowed = 'move'; c.classList.add('dragging'); });
+main.addEventListener('dragend', (e) => e.target.closest?.('.card')?.classList.remove('dragging'));
+main.addEventListener('dragover', (e) => { const col = e.target.closest('.column'); if (!col) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; col.classList.add('over'); });
+main.addEventListener('dragleave', (e) => { const col = e.target.closest('.column'); if (col && !col.contains(e.relatedTarget)) col.classList.remove('over'); });
+main.addEventListener('drop', (e) => {
+  const col = e.target.closest('.column');
+  if (!col) return;
+  e.preventDefault();
+  col.classList.remove('over');
+  const key = e.dataTransfer.getData('text/plain'), t = byKey(key);
+  if (t && t.status !== col.dataset.status) run(() => api('POST', `/api/tickets/${key}/move`, { status: col.dataset.status }));
+});
+
+// Header controls
+document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => { state.view = b.dataset.view; state.fitPending = true; render(); }));
+$('#f-epic').addEventListener('change', (e) => { state.epic = e.target.value; state.fitPending = true; render(); });
+$('#f-theme').addEventListener('change', (e) => { state.theme = e.target.value; state.fitPending = true; render(); });
+$('#f-type').addEventListener('change', (e) => { state.type = e.target.value; state.fitPending = true; render(); });
+$('#f-q').addEventListener('input', (e) => { state.q = e.target.value; state.fitPending = true; render(); });
+$('#new-ticket').addEventListener('click', () => { Object.assign(state, { ticket: 'new', mode: 'edit', err: '' }); writeHash(); renderDrawer(); });
+window.addEventListener('hashchange', () => { readHash(); state.fitPending = true; render(); });
+
+readHash();
+load().catch((e) => toast(e.message));
+</script>
+</body>
+</html>
