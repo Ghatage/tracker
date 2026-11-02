@@ -61,7 +61,22 @@ function send(res, status, body, type = 'application/json; charset=utf-8') {
   res.end(data);
 }
 
+// Other web pages open in the browser must not read or change the board. A foreign
+// Host header means DNS rebinding; a foreign Origin, or a non-JSON body (which the
+// browser sends cross-site without a CORS preflight), means a cross-site request.
+function checkCaller(req) {
+  const host = req.headers.host ?? '';
+  if (!/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) throw new TrackerError(403, `host not allowed: ${host}`);
+  if (req.method === 'GET') return;
+  const origin = req.headers.origin;
+  if (origin && origin !== `http://${host}`) throw new TrackerError(403, `origin not allowed: ${origin}`);
+  if (['POST', 'PATCH'].includes(req.method) && !/^application\/json\b/i.test(req.headers['content-type'] ?? '')) {
+    throw new TrackerError(415, 'content-type must be application/json');
+  }
+}
+
 async function handle(db, req, res) {
+  checkCaller(req);
   const url = new URL(req.url, 'http://localhost');
   const path = url.pathname;
   if (req.method === 'GET' && (path === '/' || path === '/index.html')) {

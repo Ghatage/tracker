@@ -401,6 +401,37 @@ test('projects: init, prefix, discovery from a subfolder, CLI without TRACKER_DB
   }
 });
 
+test('server: refuses foreign hosts, foreign origins and non-JSON writes', async () => {
+  const { spawn } = await import('node:child_process');
+  const { request } = await import('node:http');
+  const env = { ...process.env, TRACKER_DB: join(dir, `server${n++}.db`) };
+  const ui = spawn(process.execPath, ['--no-warnings', join(import.meta.dirname, 'cli.mjs'), 'ui', '--port', '0'], { env, stdio: ['ignore', 'pipe', 'inherit'] });
+  try {
+    const { url } = await new Promise((resolve) => ui.stdout.once('data', (d) => resolve(JSON.parse(String(d).split('\n')[0]))));
+    const { port } = new URL(url);
+    const call = (method, path, headers = {}, body) => new Promise((resolve, reject) => {
+      const req = request({ host: '127.0.0.1', port, method, path, headers: { host: `localhost:${port}`, ...headers } }, (res) => {
+        res.resume();
+        res.on('end', () => resolve(res.statusCode));
+      });
+      req.on('error', reject);
+      req.end(body);
+    });
+    const json = { 'content-type': 'application/json' };
+    const ticket = JSON.stringify({ title: 'x' });
+    assert.equal(await call('GET', '/api/tickets'), 200);
+    assert.equal(await call('GET', '/api/tickets', { host: `evil.example:${port}` }), 403, 'DNS rebinding');
+    assert.equal(await call('POST', '/api/tickets', json, ticket), 201);
+    assert.equal(await call('POST', '/api/tickets', { 'content-type': 'text/plain' }, ticket), 415, 'simple cross-site POST');
+    assert.equal(await call('POST', '/api/import', { ...json, origin: 'https://evil.example' }, '{}'), 403, 'foreign origin');
+    assert.equal(await call('POST', '/api/tickets', { ...json, origin: `http://localhost:${port}` }, ticket), 201, 'own origin');
+    assert.equal(await call('DELETE', '/api/tickets/TK-1', { origin: 'https://evil.example' }), 403);
+    assert.equal(await call('DELETE', '/api/tickets/TK-1'), 200);
+  } finally {
+    ui.kill();
+  }
+});
+
 test('concurrent writers: parallel CLI processes all succeed against one database', async () => {
   const { spawn } = await import('node:child_process');
   const path = join(dir, `concurrent${n++}.db`);
